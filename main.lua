@@ -26,6 +26,13 @@ local function GetGradient(color)
     return ColorSequence.new{ColorSequenceKeypoint.new(0, color), ColorSequenceKeypoint.new(0.5, dark), ColorSequenceKeypoint.new(1, color)}
 end
 
+local function MakeDrag(handle, target)
+    local drag, dStart, sPos
+    handle.InputBegan:Connect(function(i) if i.UserInputType.Name:find("Mouse") or i.UserInputType.Name:find("Touch") then drag, dStart, sPos = true, i.Position, target.Position end end)
+    UIS.InputChanged:Connect(function(i) if drag and (i.UserInputType.Name:find("Mouse") or i.UserInputType.Name:find("Touch")) then local d = i.Position - dStart; target.Position = UDim2.new(sPos.X.Scale, sPos.X.Offset + d.X, sPos.Y.Scale, sPos.Y.Offset + d.Y) end end)
+    UIS.InputEnded:Connect(function(i) if i.UserInputType.Name:find("Mouse") or i.UserInputType.Name:find("Touch") then drag = false end end)
+end
+
 local GUI = Make("ScreenGui", {Name = "DeltaEvoUI", ResetOnSpawn = false, IgnoreGuiInset = true, Parent = CG})
 local ESPFolder = Make("Folder", {Name = "ESPFolder", Parent = GUI})
 
@@ -38,10 +45,9 @@ Make("UICorner", {CornerRadius = UDim.new(0,10), Parent = Main})
 local M_Stroke = Make("UIStroke", {Thickness = 2.5, Color = Color3.new(1,1,1), Parent = Main})
 local Grad = Make("UIGradient", {Color = GetGradient(C_PR), Parent = M_Stroke})
 
--- Горизонтальный отдельный фон выбора цвета НАД меню
+-- Фон выбора цвета НАД меню
 local ColorBg = Make("Frame", {Size = UDim2.new(0,165,0,28), Position = UDim2.new(0,0,0,-36), BackgroundColor3 = Color3.fromRGB(18,18,24), Parent = Main})
 Make("UICorner", {CornerRadius = UDim.new(0,8), Parent = ColorBg})
--- Обводка как у главного GUI
 local C_Stroke = Make("UIStroke", {Thickness = 2.5, Color = Color3.new(1,1,1), Parent = ColorBg})
 local C_Grad = Make("UIGradient", {Color = GetGradient(C_PR), Parent = C_Stroke})
 
@@ -52,7 +58,7 @@ local Top = Make("Frame", {Size = UDim2.new(1,0,0,40), BackgroundColor3 = Color3
 Make("UICorner", {CornerRadius = UDim.new(0,10), Parent = Top})
 local Title = Make("TextLabel", {Size = UDim2.new(1,-80,1,0), Position = UDim2.new(0,15,0,0), BackgroundTransparency = 1, Text = "NaziDLC", TextColor3 = C_PR, Font = GB, TextSize = 15, TextXAlignment = Enum.TextXAlignment.Left, Parent = Top})
 
--- Кнопки в шапке (Палитра и Сворачивание)
+-- Кнопки в шапке
 local ColorBtn = Make("TextButton", {Size = UDim2.new(0,30,1,0), Position = UDim2.new(1,-70,0,0), BackgroundTransparency = 1, Text = "🎨", TextColor3 = C_TX, Font = GB, TextSize = 14, ZIndex = 5, Parent = Top})
 local MinBtn = Make("TextButton", {Size = UDim2.new(0,40,1,0), Position = UDim2.new(1,-40,0,0), BackgroundTransparency = 1, Text = "—", TextColor3 = C_TX, Font = GB, TextSize = 16, ZIndex = 5, Parent = Top})
 
@@ -63,7 +69,115 @@ local Float = Make("TextButton", {Size = UDim2.new(0,50,0,50), Position = UDim2.
 Make("UICorner", {CornerRadius = UDim.new(1,0), Parent = Float})
 Make("UIStroke", {Thickness = 1, Color = Color3.new(1,1,1), Transparency = 0.85, Parent = Float})
 
--- Логика переключения панели цветов
+-- ========================================================
+--  ОТДЕЛЬНОЕ КОМПАКТНОЕ ОКНО ТЕЛЕПОРТА (TP PLAYER GUI)
+-- ========================================================
+local TPMenu = Make("Frame", {
+    Size = UDim2.new(0, 170, 0, 190),
+    Position = UDim2.new(0.7, 0, 0.35, 0),
+    BackgroundColor3 = C_BG,
+    Visible = false,
+    Active = true,
+    Parent = GUI
+})
+Make("UICorner", {CornerRadius = UDim.new(0, 8), Parent = TPMenu})
+local TP_Stroke = Make("UIStroke", {Thickness = 2, Color = Color3.new(1,1,1), Parent = TPMenu})
+local TP_Grad = Make("UIGradient", {Color = GetGradient(C_PR), Parent = TP_Stroke})
+
+local TPTop = Make("Frame", {Size = UDim2.new(1, 0, 0, 30), BackgroundColor3 = Color3.fromRGB(18,18,24), Active = true, Parent = TPMenu})
+Make("UICorner", {CornerRadius = UDim.new(0, 8), Parent = TPTop})
+
+local TPTitle = Make("TextLabel", {
+    Size = UDim2.new(1, -35, 1, 0), Position = UDim2.new(0, 8, 0, 0),
+    BackgroundTransparency = 1, Text = "TP Player", TextColor3 = C_PR,
+    Font = GB, TextSize = 12, TextXAlignment = Enum.TextXAlignment.Left, Parent = TPTop
+})
+
+local TPCloseBtn = Make("TextButton", {
+    Size = UDim2.new(0, 26, 0, 26), Position = UDim2.new(1, -28, 0.5, -13),
+    BackgroundTransparency = 1, Text = "X", TextColor3 = Color3.fromRGB(255, 75, 75),
+    Font = GB, TextSize = 13, Parent = TPTop
+})
+
+local TPScroll = Make("ScrollingFrame", {
+    Size = UDim2.new(1, -10, 1, -36), Position = UDim2.new(0, 5, 0, 32),
+    BackgroundTransparency = 1, ScrollBarThickness = 0, Parent = TPMenu
+})
+local TPList = Make("UIListLayout", {Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder, Parent = TPScroll})
+
+TPList:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+    TPScroll.CanvasSize = UDim2.new(0, 0, 0, TPList.AbsoluteContentSize.Y + 4)
+end)
+
+MakeDrag(TPTop, TPMenu)
+
+local function UpdateTPList()
+    for _, child in ipairs(TPScroll:GetChildren()) do
+        if child:IsA("TextButton") or child:IsA("Frame") then child:Destroy() end
+    end
+    
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LP then
+            local card = Make("TextButton", {
+                Size = UDim2.new(1, 0, 0, 32), BackgroundColor3 = C_EL,
+                Text = "", AutoButtonColor = true, Parent = TPScroll
+            })
+            Make("UICorner", {CornerRadius = UDim.new(0, 6), Parent = card})
+            
+            local img = Make("ImageLabel", {
+                Size = UDim2.new(0, 22, 0, 22), Position = UDim2.new(0, 4, 0.5, -11),
+                BackgroundTransparency = 1, Parent = card
+            })
+            Make("UICorner", {CornerRadius = UDim.new(1, 0), Parent = img})
+            
+            task.spawn(function()
+                local content = Players:GetUserThumbnailAsync(p.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size100x100)
+                img.Image = content
+            end)
+            
+            Make("TextLabel", {
+                Size = UDim2.new(1, -32, 0, 12), Position = UDim2.new(0, 30, 0, 3),
+                BackgroundTransparency = 1, Text = p.DisplayName, TextColor3 = C_TX,
+                Font = GB, TextSize = 10, TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd, Parent = card
+            })
+            Make("TextLabel", {
+                Size = UDim2.new(1, -32, 0, 10), Position = UDim2.new(0, 30, 0, 16),
+                BackgroundTransparency = 1, Text = "@" .. string.lower(p.Name), TextColor3 = C_GR,
+                Font = G, TextSize = 8, TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd, Parent = card
+            })
+            
+            card.MouseButton1Click:Connect(function()
+                if p.Character and p.Character:FindFirstChild("HumanoidRootPart") and LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then
+                    LP.Character.HumanoidRootPart.CFrame = p.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, 3)
+                    pcall(function() game.StarterGui:SetCore("SendNotification", {Title = "NaziDLC - Teleport", Text = "Телепортирован к " .. p.DisplayName, Duration = 2}) end)
+                end
+            end)
+        end
+    end
+end
+
+Players.PlayerAdded:Connect(UpdateTPList)
+Players.PlayerRemoving:Connect(UpdateTPList)
+
+local function ToggleTPMenu(state)
+    if state then
+        UpdateTPList()
+        TPMenu.Visible = true
+        TPMenu.Size = UDim2.new(0, 0, 0, 0)
+        TS:Create(TPMenu, TweenInfo.new(0.3, EBack, EOut), {Size = UDim2.new(0, 170, 0, 190)}):Play()
+    else
+        local anim = TS:Create(TPMenu, TweenInfo.new(0.2, EBack, EIn), {Size = UDim2.new(0, 0, 0, 0)})
+        anim:Play()
+        anim.Completed:Wait()
+        TPMenu.Visible = false
+    end
+end
+
+TPCloseBtn.MouseButton1Click:Connect(function()
+    ToggleTPMenu(false)
+end)
+
+-- Логика темы и цветов
 local colorsOpen = true
 local isColorAnim = false
 ColorBtn.MouseButton1Click:Connect(function()
@@ -86,12 +200,13 @@ ColorBtn.MouseButton1Click:Connect(function()
     isColorAnim = false
 end)
 
--- Темы
 local ThemeColors = {C_PR, Color3.fromRGB(255,40,40), Color3.fromRGB(40,200,255), Color3.fromRGB(40,255,100), Color3.fromRGB(255,180,40)}
 for _, col in ipairs(ThemeColors) do
     local btn = Make("TextButton", {Size = UDim2.new(0,18,0,18), BackgroundColor3 = col, Text = "", Parent = ColorPanel})
     Make("UICorner", {CornerRadius = UDim.new(1,0), Parent = btn})
-    btn.MouseButton1Click:Connect(function() IsRainbow = false; C_PR = col; Grad.Color = GetGradient(col); C_Grad.Color = GetGradient(col); Title.TextColor3 = col; Float.TextColor3 = col; FOVStroke.Color = col end)
+    btn.MouseButton1Click:Connect(function() 
+        IsRainbow = false; C_PR = col; Grad.Color = GetGradient(col); C_Grad.Color = GetGradient(col); TP_Grad.Color = GetGradient(col); Title.TextColor3 = col; TPTitle.TextColor3 = col; Float.TextColor3 = col; FOVStroke.Color = col 
+    end)
 end
 local RbwBtn = Make("TextButton", {Size = UDim2.new(0,18,0,18), BackgroundColor3 = Color3.new(1,1,1), Text = "", Parent = ColorPanel})
 Make("UICorner", {CornerRadius = UDim.new(1,0), Parent = RbwBtn})
@@ -105,20 +220,14 @@ RS.RenderStepped:Connect(function(dt)
     if IsRainbow then
         RainbowHue = (RainbowHue + dt * 0.3) % 1
         C_PR = Color3.fromHSV(RainbowHue, 0.9, 1)
-        Grad.Color = GetGradient(C_PR); C_Grad.Color = GetGradient(C_PR); Title.TextColor3 = C_PR; Float.TextColor3 = C_PR; FOVStroke.Color = C_PR
+        Grad.Color = GetGradient(C_PR); C_Grad.Color = GetGradient(C_PR); TP_Grad.Color = GetGradient(C_PR); Title.TextColor3 = C_PR; TPTitle.TextColor3 = C_PR; Float.TextColor3 = C_PR; FOVStroke.Color = C_PR
     end
     Grad.Rotation = (Grad.Rotation + 80 * dt) % 360
     C_Grad.Rotation = Grad.Rotation
+    TP_Grad.Rotation = Grad.Rotation
     if FOVFrame.Visible then FOVFrame.Position = UDim2.new(0, Cam.ViewportSize.X/2, 0, Cam.ViewportSize.Y/2) end
 end)
 
--- Перетаскивание и Анимации
-local function MakeDrag(handle, target)
-    local drag, dStart, sPos
-    handle.InputBegan:Connect(function(i) if i.UserInputType.Name:find("Mouse") or i.UserInputType.Name:find("Touch") then drag, dStart, sPos = true, i.Position, target.Position end end)
-    UIS.InputChanged:Connect(function(i) if drag and (i.UserInputType.Name:find("Mouse") or i.UserInputType.Name:find("Touch")) then local d = i.Position - dStart; target.Position = UDim2.new(sPos.X.Scale, sPos.X.Offset + d.X, sPos.Y.Scale, sPos.Y.Offset + d.Y) end end)
-    UIS.InputEnded:Connect(function(i) if i.UserInputType.Name:find("Mouse") or i.UserInputType.Name:find("Touch") then drag = false end end)
-end
 MakeDrag(Top, Main); MakeDrag(Float, Float)
 
 local isAnim = false
@@ -284,7 +393,15 @@ AimF:Slider("Размер FOV", 30, 400, 100, function(v) Aim.FOV = v; FOVFrame.
 AimF:Slider("Плавность", 1, 100, 50, function(v) Aim.Smooth = v/100 end)
 AimF:Slider("Дистанция захвата", 50, 3000, 500, function(v) Aim.Dist = v end)
 
--- 3. Lighting
+-- 3. TP Player
+local TPF = Elements:Feature("TP Player (Телепорт)", function(s)
+    ToggleTPMenu(s)
+end)
+TPF:Button("Открыть окно TP (👥)", function()
+    ToggleTPMenu(true)
+end)
+
+-- 4. Lighting
 local fbLoop
 Elements:Feature("FullBright (Освещение)", function(s)
     if s then
@@ -313,7 +430,7 @@ local WBF = Elements:Feature("WallBright", function(s)
 end)
 WBF:Slider("Прозрачность стен", 0, 100, 50, function(v) WB.Trans = v/100; if WB.On then for p, _ in pairs(WB.Orig) do if p and p.Parent then p.Transparency = WB.Trans end end end end)
 
--- 4. ESP Система
+-- 5. ESP Система
 local DW = {}
 local function ApplyChamsToChar(char)
     if not char then return end
@@ -397,7 +514,7 @@ RS.RenderStepped:Connect(function()
     end
 end)
 
--- 5. Movement / Character Mods
+-- 6. Movement / Character Mods
 RS.Heartbeat:Connect(function()
     local char = LP.Character
     local hum = char and char:FindFirstChildOfClass("Humanoid")
