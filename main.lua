@@ -414,20 +414,38 @@ local function setFloat(character, state)
     end
 end
 
+local function CleanFarm()
+    if LP.Character then
+        setFloat(LP.Character, false)
+        local hum = LP.Character:FindFirstChildOfClass("Humanoid")
+        if hum then
+            hum:ChangeState(Enum.HumanoidStateType.Freefall)
+        end
+    end
+end
+
+local function waitFarm(seconds)
+    local t = 0
+    while t < seconds and BABFT.Farming do
+        task.wait(0.1)
+        t = t + 0.1
+    end
+    return BABFT.Farming
+end
+
 local function startFarmCycle()
     local char = LP.Character or LP.CharacterAdded:Wait()
     local hrp = char:WaitForChild("HumanoidRootPart", 10)
     local humanoid = char:WaitForChild("Humanoid", 10)
     
-    if not hrp or not humanoid then return end
+    if not hrp or not humanoid or not BABFT.Farming then return end
     
     setFloat(char, true)
     
     local activeWaypoints = BABFT.FlyAutoFarm and BABFT.WaypointsFly or BABFT.WaypointsTP
     
     for index, pos in ipairs(activeWaypoints) do
-        if not BABFT.Farming then break end
-        if not char or not char.Parent or humanoid.Health <= 0 then break end
+        if not BABFT.Farming or not char or not char.Parent or humanoid.Health <= 0 then break end
         
         local targetCF = CFrame.new(pos)
         
@@ -454,32 +472,39 @@ local function startFarmCycle()
             
             if index == #activeWaypoints then
                 if BABFT.RespawnToCase then
-                    task.wait(4.5)
-                    if char and humanoid and humanoid.Health > 0 then
+                    if not waitFarm(4.5) then break end
+                    if char and humanoid and humanoid.Health > 0 and BABFT.Farming then
                         humanoid.Health = 0
                     end
                 else
                     local oldChar = char
-                    repeat task.wait(0.5) until not BABFT.Farming or LP.Character ~= oldChar or (oldChar:FindFirstChild("Humanoid") and oldChar.Humanoid.Health <= 0)
+                    repeat 
+                        if not task.wait(0.5) then break end 
+                    until not BABFT.Farming or LP.Character ~= oldChar or (oldChar:FindFirstChild("Humanoid") and oldChar.Humanoid.Health <= 0)
                 end
             else
-                task.wait(BABFT.TimeToTeleport)
+                if not waitFarm(BABFT.TimeToTeleport) then break end
             end
         end
     end
     
     if BABFT.Farming and BABFT.FlyAutoFarm and BABFT.RespawnToCase then
-        task.wait(4.5)
-        if char and humanoid and humanoid.Health > 0 then
+        if waitFarm(4.5) and char and humanoid and humanoid.Health > 0 then
             humanoid.Health = 0
         end
+    end
+    
+    if not BABFT.Farming then
+        CleanFarm()
     end
 end
 
 LP.CharacterAdded:Connect(function(newChar)
     if BABFT.Farming then
         task.wait(1.5)
-        task.spawn(startFarmCycle)
+        if BABFT.Farming then
+            task.spawn(startFarmCycle)
+        end
     end
 end)
 
@@ -490,9 +515,7 @@ local BABFT_Feature = Elements:Feature("BABFT AutoFarm", function(s)
         task.spawn(startFarmCycle)
     else
         pcall(function() game.StarterGui:SetCore("SendNotification", {Title = "NaziDLC - AutoFarm", Text = "Автофарм остановлен.", Duration = 3}) end)
-        if LP.Character then
-            setFloat(LP.Character, false)
-        end
+        CleanFarm()
     end
 end)
 
