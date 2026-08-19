@@ -13,6 +13,28 @@ local C_BG, C_EL, C_PR = Color3.fromRGB(12,12,16), Color3.fromRGB(22,22,28), Col
 local C_TX, C_GR, C_On, C_Off = Color3.fromRGB(240,240,240), Color3.fromRGB(150,150,150), Color3.fromRGB(46,204,113), Color3.fromRGB(45,45,55)
 local IsRainbow, RainbowHue = false, 0
 
+local ThemeElements = {
+    Fills = {},
+    Texts = {},
+    Strokes = {}
+}
+
+local function RegisterElement(type, inst)
+    table.insert(ThemeElements[type], inst)
+end
+
+local function UpdateThemeColor(newColor)
+    for _, fill in ipairs(ThemeElements.Fills) do
+        if fill and fill.Parent then fill.BackgroundColor3 = newColor end
+    end
+    for _, txt in ipairs(ThemeElements.Texts) do
+        if txt and txt.Parent then txt.TextColor3 = newColor end
+    end
+    for _, str in ipairs(ThemeElements.Strokes) do
+        if str and str.Parent then str.Color = newColor end
+    end
+end
+
 local function Make(cls, props)
     local inst = Instance.new(cls)
     for k, v in next, props do if k ~= "Parent" then inst[k] = v end end
@@ -38,6 +60,7 @@ local ESPFolder = Make("Folder", {Name = "ESPFolder", Parent = GUI})
 
 local FOVFrame = Make("Frame", {AnchorPoint = Vector2.new(0.5,0.5), BackgroundTransparency = 1, Visible = false, Parent = GUI})
 local FOVStroke = Make("UIStroke", {Color = C_PR, Thickness = 1.5, Parent = FOVFrame})
+RegisterElement("Strokes", FOVStroke)
 Make("UICorner", {CornerRadius = UDim.new(1,0), Parent = FOVFrame})
 
 local Main = Make("Frame", {Size = UDim2.new(0,350,0,280), Position = UDim2.new(0.5,0,0.5,0), AnchorPoint = Vector2.new(0.5,0.5), BackgroundColor3 = C_BG, ClipsDescendants = false, Parent = GUI})
@@ -45,7 +68,6 @@ Make("UICorner", {CornerRadius = UDim.new(0,10), Parent = Main})
 local M_Stroke = Make("UIStroke", {Thickness = 2.5, Color = Color3.new(1,1,1), Parent = Main})
 local Grad = Make("UIGradient", {Color = GetGradient(C_PR), Parent = M_Stroke})
 
--- Фон выбора цвета НАД меню
 local ColorBg = Make("Frame", {Size = UDim2.new(0,165,0,28), Position = UDim2.new(0,0,0,-36), BackgroundColor3 = Color3.fromRGB(18,18,24), Parent = Main})
 Make("UICorner", {CornerRadius = UDim.new(0,8), Parent = ColorBg})
 local C_Stroke = Make("UIStroke", {Thickness = 2.5, Color = Color3.new(1,1,1), Parent = ColorBg})
@@ -57,8 +79,8 @@ Make("UIListLayout", {FillDirection = Enum.FillDirection.Horizontal, Padding = U
 local Top = Make("Frame", {Size = UDim2.new(1,0,0,40), BackgroundColor3 = Color3.fromRGB(18,18,24), Active = true, Parent = Main})
 Make("UICorner", {CornerRadius = UDim.new(0,10), Parent = Top})
 local Title = Make("TextLabel", {Size = UDim2.new(1,-80,1,0), Position = UDim2.new(0,15,0,0), BackgroundTransparency = 1, Text = "NaziDLC", TextColor3 = C_PR, Font = GB, TextSize = 15, TextXAlignment = Enum.TextXAlignment.Left, Parent = Top})
+RegisterElement("Texts", Title)
 
--- Кнопки в шапке
 local ColorBtn = Make("TextButton", {Size = UDim2.new(0,30,1,0), Position = UDim2.new(1,-70,0,0), BackgroundTransparency = 1, Text = "🎨", TextColor3 = C_TX, Font = GB, TextSize = 14, ZIndex = 5, Parent = Top})
 local MinBtn = Make("TextButton", {Size = UDim2.new(0,40,1,0), Position = UDim2.new(1,-40,0,0), BackgroundTransparency = 1, Text = "—", TextColor3 = C_TX, Font = GB, TextSize = 16, ZIndex = 5, Parent = Top})
 
@@ -66,12 +88,10 @@ local Scroll = Make("ScrollingFrame", {Size = UDim2.new(1,-20,1,-55), Position =
 local List = Make("UIListLayout", {Padding = UDim.new(0,8), SortOrder = Enum.SortOrder.LayoutOrder, Parent = Scroll})
 
 local Float = Make("TextButton", {Size = UDim2.new(0,50,0,50), Position = UDim2.new(0.5,0,0.1,0), AnchorPoint = Vector2.new(0.5,0.5), BackgroundColor3 = Color3.fromRGB(20,20,20), Text = "N", TextColor3 = C_PR, Font = GM, TextSize = 22, Visible = false, Active = true, Parent = GUI})
+RegisterElement("Texts", Float)
 Make("UICorner", {CornerRadius = UDim.new(1,0), Parent = Float})
 Make("UIStroke", {Thickness = 1, Color = Color3.new(1,1,1), Transparency = 0.85, Parent = Float})
 
--- ========================================================
---  ОТДЕЛЬНОЕ КОМПАКТНОЕ ОКНО ТЕЛЕПОРТА (TP PLAYER GUI)
--- ========================================================
 local TPMenu = Make("Frame", {
     Size = UDim2.new(0, 170, 0, 190),
     Position = UDim2.new(0.7, 0, 0.35, 0),
@@ -92,6 +112,7 @@ local TPTitle = Make("TextLabel", {
     BackgroundTransparency = 1, Text = "TP Player", TextColor3 = C_PR,
     Font = GB, TextSize = 12, TextXAlignment = Enum.TextXAlignment.Left, Parent = TPTop
 })
+RegisterElement("Texts", TPTitle)
 
 local TPCloseBtn = Make("TextButton", {
     Size = UDim2.new(0, 26, 0, 26), Position = UDim2.new(1, -28, 0.5, -13),
@@ -177,7 +198,6 @@ TPCloseBtn.MouseButton1Click:Connect(function()
     ToggleTPMenu(false)
 end)
 
--- Логика темы и цветов
 local colorsOpen = true
 local isColorAnim = false
 ColorBtn.MouseButton1Click:Connect(function()
@@ -200,12 +220,17 @@ ColorBtn.MouseButton1Click:Connect(function()
     isColorAnim = false
 end)
 
-local ThemeColors = {C_PR, Color3.fromRGB(255,40,40), Color3.fromRGB(40,200,255), Color3.fromRGB(40,255,100), Color3.fromRGB(255,180,40)}
+local ThemeColors = {Color3.fromRGB(138,43,226), Color3.fromRGB(255,40,40), Color3.fromRGB(40,200,255), Color3.fromRGB(40,255,100), Color3.fromRGB(255,180,40)}
 for _, col in ipairs(ThemeColors) do
     local btn = Make("TextButton", {Size = UDim2.new(0,18,0,18), BackgroundColor3 = col, Text = "", Parent = ColorPanel})
     Make("UICorner", {CornerRadius = UDim.new(1,0), Parent = btn})
     btn.MouseButton1Click:Connect(function() 
-        IsRainbow = false; C_PR = col; Grad.Color = GetGradient(col); C_Grad.Color = GetGradient(col); TP_Grad.Color = GetGradient(col); Title.TextColor3 = col; TPTitle.TextColor3 = col; Float.TextColor3 = col; FOVStroke.Color = col 
+        IsRainbow = false
+        C_PR = col
+        Grad.Color = GetGradient(col)
+        C_Grad.Color = GetGradient(col)
+        TP_Grad.Color = GetGradient(col)
+        UpdateThemeColor(col)
     end)
 end
 local RbwBtn = Make("TextButton", {Size = UDim2.new(0,18,0,18), BackgroundColor3 = Color3.new(1,1,1), Text = "", Parent = ColorPanel})
@@ -220,7 +245,10 @@ RS.RenderStepped:Connect(function(dt)
     if IsRainbow then
         RainbowHue = (RainbowHue + dt * 0.3) % 1
         C_PR = Color3.fromHSV(RainbowHue, 0.9, 1)
-        Grad.Color = GetGradient(C_PR); C_Grad.Color = GetGradient(C_PR); TP_Grad.Color = GetGradient(C_PR); Title.TextColor3 = C_PR; TPTitle.TextColor3 = C_PR; Float.TextColor3 = C_PR; FOVStroke.Color = C_PR
+        Grad.Color = GetGradient(C_PR)
+        C_Grad.Color = GetGradient(C_PR)
+        TP_Grad.Color = GetGradient(C_PR)
+        UpdateThemeColor(C_PR)
     end
     Grad.Rotation = (Grad.Rotation + 80 * dt) % 360
     C_Grad.Rotation = Grad.Rotation
@@ -285,15 +313,20 @@ function Elements:Feature(txt, cb)
     function Settings:Button(name, bcb)
         local S = Make("Frame", {Size = UDim2.new(1,0,0,38), BackgroundTransparency = 1, Parent = Cont})
         local Btn = Make("TextButton", {Size = UDim2.new(1,-20,0,26), Position = UDim2.new(0,10,0.5,-13), BackgroundColor3 = C_BG, Text = name, TextColor3 = C_TX, Font = GB, TextSize = 12, Parent = S})
-        Make("UICorner", {CornerRadius = UDim.new(0,6), Parent = Btn}); Make("UIStroke", {Thickness = 1, Color = C_PR, Parent = Btn})
+        Make("UICorner", {CornerRadius = UDim.new(0,6), Parent = Btn})
+        local btnStroke = Make("UIStroke", {Thickness = 1, Color = C_PR, Parent = Btn})
+        RegisterElement("Strokes", btnStroke)
         Btn.MouseButton1Click:Connect(bcb)
     end
     function Settings:Slider(name, min, max, def, scb)
         local S = Make("Frame", {Size = UDim2.new(1,0,0,45), BackgroundTransparency = 1, Parent = Cont})
         Make("TextLabel", {Size = UDim2.new(1,-20,0,20), Position = UDim2.new(0,10,0,0), BackgroundTransparency = 1, Text = name, TextColor3 = C_GR, Font = G, TextSize = 12, TextXAlignment = Enum.TextXAlignment.Left, Parent = S})
         local V = Make("TextBox", {Size = UDim2.new(1,-20,0,20), Position = UDim2.new(0,10,0,0), BackgroundTransparency = 1, Text = tostring(def), TextColor3 = C_PR, Font = GB, TextSize = 12, TextXAlignment = Enum.TextXAlignment.Right, ClearTextOnFocus = false, Parent = S})
+        RegisterElement("Texts", V)
+        
         local Bg = Make("Frame", {Size = UDim2.new(1,-20,0,4), Position = UDim2.new(0,10,0,25), BackgroundColor3 = C_BG, Parent = S}); Make("UICorner", {CornerRadius = UDim.new(1,0), Parent = Bg})
         local Fill = Make("Frame", {Size = UDim2.new((def-min)/(max-min),0,1,0), BackgroundColor3 = C_PR, Parent = Bg}); Make("UICorner", {CornerRadius = UDim.new(1,0), Parent = Fill})
+        RegisterElement("Fills", Fill)
         
         local drag, cur = false, def
         local function upd(inp)
@@ -319,14 +352,166 @@ function Elements:Feature(txt, cb)
     return Settings
 end
 
--- Состояния и Флаги
 local SD = {On = false, SavedCF = nil, AutoJump = false}
 local Aim = {On = false, ShowFOV = false, FOV = 100, Smooth = 0.5, Wall = false, Dist = 500}
 local WB = {On = false, Trans = 0.5, Orig = {}}
 local ESP = {Master = false, Box = true, Name = true, Dist = true, HP = true, Tracers = false, Chams = false}
 local CharMods = {Fly = false, FlySpd = 50, SpdHack = false, WalkSpd = 16, JmpHack = false, JmpPwr = 50, InfJmp = false, Noclip = false}
 
--- 1. Spawn Debugger
+local BABFT = {
+    Farming = false,
+    FlyAutoFarm = false,
+    FlySpeed = 150,
+    TimeToTeleport = 4,
+    RespawnToCase = false,
+    WaypointsTP = {
+        Vector3.new(-54.8, 16.7, 272.0),
+        Vector3.new(-57.5, 41.9, 1501.6),
+        Vector3.new(-57.4, 66.3, 2359.7),
+        Vector3.new(-61.3, 51.7, 3165.5),
+        Vector3.new(-78.5, 57.6, 3870.3),
+        Vector3.new(-47.1, 49.2, 4625.2),
+        Vector3.new(-51.3, 39.9, 5360.5),
+        Vector3.new(-50.0, 30.4, 6172.8),
+        Vector3.new(-67.1, 40.6, 7087.8),
+        Vector3.new(-62.1, 63.8, 7923.0),
+        Vector3.new(-55.0, -356.8, 9484.1)
+    },
+    WaypointsFly = {
+        Vector3.new(-54.8, 120.0, 272.0),
+        Vector3.new(-57.5, 120.0, 1501.6),
+        Vector3.new(-57.4, 120.0, 2359.7),
+        Vector3.new(-61.3, 120.0, 3165.5),
+        Vector3.new(-78.5, 120.0, 3870.3),
+        Vector3.new(-47.1, 120.0, 4625.2),
+        Vector3.new(-51.3, 120.0, 5360.5),
+        Vector3.new(-50.0, 120.0, 6172.8),
+        Vector3.new(-67.1, 120.0, 7087.8),
+        Vector3.new(-62.1, 120.0, 7923.0),
+        Vector3.new(-58.0, 100.0, 8700.0),
+        Vector3.new(-55.0, -356.8, 9484.1)
+    }
+}
+
+local function setFloat(character, state)
+    if not character then return end
+    local hrp = character:FindFirstChild("HumanoidRootPart") or character:WaitForChild("HumanoidRootPart", 5)
+    if not hrp then return end
+    
+    local bv = hrp:FindFirstChild("FarmFloat")
+    if state then
+        if not bv then
+            bv = Instance.new("BodyVelocity")
+            bv.Name = "FarmFloat"
+            bv.MaxForce = Vector3.new(0, math.huge, 0)
+            bv.Velocity = Vector3.new(0, 0, 0)
+            bv.Parent = hrp
+        end
+    else
+        if bv then
+            bv:Destroy()
+        end
+    end
+end
+
+local function startFarmCycle()
+    local char = LP.Character or LP.CharacterAdded:Wait()
+    local hrp = char:WaitForChild("HumanoidRootPart", 10)
+    local humanoid = char:WaitForChild("Humanoid", 10)
+    
+    if not hrp or not humanoid then return end
+    
+    setFloat(char, true)
+    
+    local activeWaypoints = BABFT.FlyAutoFarm and BABFT.WaypointsFly or BABFT.WaypointsTP
+    
+    for index, pos in ipairs(activeWaypoints) do
+        if not BABFT.Farming then break end
+        if not char or not char.Parent or humanoid.Health <= 0 then break end
+        
+        local targetCF = CFrame.new(pos)
+        
+        if BABFT.FlyAutoFarm then
+            local distance = (hrp.Position - pos).Magnitude
+            local flyTime = distance / math.max(BABFT.FlySpeed, 10)
+            
+            local tweenInfo = TweenInfo.new(flyTime, Enum.EasingStyle.Linear)
+            local tween = TS:Create(hrp, tweenInfo, {CFrame = targetCF})
+            tween:Play()
+            
+            local elapsed = 0
+            while elapsed < flyTime and BABFT.Farming and humanoid.Health > 0 do
+                task.wait(0.1)
+                elapsed = elapsed + 0.1
+            end
+            
+            if not BABFT.Farming then
+                tween:Cancel()
+                break
+            end
+        else
+            hrp.CFrame = targetCF
+            
+            if index == #activeWaypoints then
+                if BABFT.RespawnToCase then
+                    task.wait(4.5)
+                    if char and humanoid and humanoid.Health > 0 then
+                        humanoid.Health = 0
+                    end
+                else
+                    local oldChar = char
+                    repeat task.wait(0.5) until not BABFT.Farming or LP.Character ~= oldChar or (oldChar:FindFirstChild("Humanoid") and oldChar.Humanoid.Health <= 0)
+                end
+            else
+                task.wait(BABFT.TimeToTeleport)
+            end
+        end
+    end
+    
+    if BABFT.Farming and BABFT.FlyAutoFarm and BABFT.RespawnToCase then
+        task.wait(4.5)
+        if char and humanoid and humanoid.Health > 0 then
+            humanoid.Health = 0
+        end
+    end
+end
+
+LP.CharacterAdded:Connect(function(newChar)
+    if BABFT.Farming then
+        task.wait(1.5)
+        task.spawn(startFarmCycle)
+    end
+end)
+
+local BABFT_Feature = Elements:Feature("BABFT AutoFarm", function(s)
+    BABFT.Farming = s
+    if s then
+        pcall(function() game.StarterGui:SetCore("SendNotification", {Title = "NaziDLC - AutoFarm", Text = "Автофарм запущен!", Duration = 3}) end)
+        task.spawn(startFarmCycle)
+    else
+        pcall(function() game.StarterGui:SetCore("SendNotification", {Title = "NaziDLC - AutoFarm", Text = "Автофарм остановлен.", Duration = 3}) end)
+        if LP.Character then
+            setFloat(LP.Character, false)
+        end
+    end
+end)
+
+BABFT_Feature:Slider("Time to teleport", 1, 10, 4, function(v)
+    BABFT.TimeToTeleport = v
+end)
+
+BABFT_Feature:Toggle("Fly AutoFarm", false, function(s)
+    BABFT.FlyAutoFarm = s
+end)
+
+BABFT_Feature:Slider("Fly Speed", 50, 500, 150, function(v)
+    BABFT.FlySpeed = v
+end)
+
+BABFT_Feature:Toggle("Respawn to Case", false, function(s)
+    BABFT.RespawnToCase = s
+end)
+
 local SDF = Elements:Feature("Spawn Debugger", function(s)
     SD.On = s
     if s and SD.SavedCF == nil and LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then
@@ -344,7 +529,6 @@ SDF:Button("Сохранить текущую позицию", function()
 end)
 SDF:Toggle("Auto Jump (Авто Фарм)", false, function(s) SD.AutoJump = s end)
 
--- 2. Aimbot
 local function GetBestTargetPart(char)
     local head = char:FindFirstChild("Head")
     local torso = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso")
@@ -393,7 +577,6 @@ AimF:Slider("Размер FOV", 30, 400, 100, function(v) Aim.FOV = v; FOVFrame.
 AimF:Slider("Плавность", 1, 100, 50, function(v) Aim.Smooth = v/100 end)
 AimF:Slider("Дистанция захвата", 50, 3000, 500, function(v) Aim.Dist = v end)
 
--- 3. TP Player
 local TPF = Elements:Feature("TP Player (Телепорт)", function(s)
     ToggleTPMenu(s)
 end)
@@ -401,7 +584,6 @@ TPF:Button("Открыть окно TP (👥)", function()
     ToggleTPMenu(true)
 end)
 
--- 4. Lighting
 local fbLoop
 Elements:Feature("FullBright (Освещение)", function(s)
     if s then
@@ -430,7 +612,6 @@ local WBF = Elements:Feature("WallBright", function(s)
 end)
 WBF:Slider("Прозрачность стен", 0, 100, 50, function(v) WB.Trans = v/100; if WB.On then for p, _ in pairs(WB.Orig) do if p and p.Parent then p.Transparency = WB.Trans end end end end)
 
--- 5. ESP Система
 local DW = {}
 local function ApplyChamsToChar(char)
     if not char then return end
@@ -447,11 +628,19 @@ local function CreateUIESP(p)
     local mainFrame = Make("Frame", {BackgroundTransparency = 1, Visible = false, Parent = ESPFolder})
     local box = Make("Frame", {BackgroundTransparency = 1, Size = UDim2.new(1,0,1,0), Visible = true, Parent = mainFrame})
     local stroke = Make("UIStroke", {Color = C_PR, Thickness = 1.5, Parent = box})
+    RegisterElement("Strokes", stroke)
+    
     local name = Make("TextLabel", {Size = UDim2.new(1,0,0,15), Position = UDim2.new(0,0,0,-16), BackgroundTransparency = 1, Text = p.Name, TextColor3 = C_PR, Font = GB, TextSize = 11, Parent = mainFrame})
+    RegisterElement("Texts", name)
+    
     local dist = Make("TextLabel", {Size = UDim2.new(1,0,0,15), Position = UDim2.new(0,0,1,2), BackgroundTransparency = 1, TextColor3 = C_PR, Font = G, TextSize = 10, Parent = mainFrame})
+    RegisterElement("Texts", dist)
+    
     local hpBg = Make("Frame", {Size = UDim2.new(0,3,1,0), Position = UDim2.new(0,-6,0,0), BackgroundColor3 = Color3.new(0,0,0), BorderSizePixel = 0, Parent = mainFrame})
     local hpBar = Make("Frame", {Size = UDim2.new(1,0,1,0), BackgroundColor3 = Color3.new(0,1,0), BorderSizePixel = 0, Parent = hpBg})
     local tracer = Make("Frame", {AnchorPoint = Vector2.new(0.5,0.5), BackgroundColor3 = C_PR, BorderSizePixel = 0, Visible = false, Parent = ESPFolder})
+    RegisterElement("Fills", tracer)
+    
     DW[p] = {Frame = mainFrame, BoxFrame = box, BoxStroke = stroke, Name = name, Dist = dist, HpBg = hpBg, HpBar = hpBar, Tracer = tracer}
     if p.Character then task.wait(0.2); ApplyChamsToChar(p.Character) end
     p.CharacterAdded:Connect(function(c) task.wait(0.2); ApplyChamsToChar(c) end)
@@ -514,7 +703,6 @@ RS.RenderStepped:Connect(function()
     end
 end)
 
--- 6. Movement / Character Mods
 RS.Heartbeat:Connect(function()
     local char = LP.Character
     local hum = char and char:FindFirstChildOfClass("Humanoid")
