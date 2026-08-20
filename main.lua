@@ -132,6 +132,119 @@ end)
 
 MakeDrag(TPTop, TPMenu)
 
+local FlingTargetMenu = Make("Frame", {
+    Size = UDim2.new(0, 170, 0, 190),
+    Position = UDim2.new(0.15, 0, 0.35, 0),
+    BackgroundColor3 = C_BG,
+    Visible = false,
+    Active = true,
+    Parent = GUI
+})
+Make("UICorner", {CornerRadius = UDim.new(0, 8), Parent = FlingTargetMenu})
+local FT_Stroke = Make("UIStroke", {Thickness = 2, Color = Color3.new(1,1,1), Parent = FlingTargetMenu})
+local FT_Grad = Make("UIGradient", {Color = GetGradient(C_PR), Parent = FT_Stroke})
+
+local FTPTop = Make("Frame", {Size = UDim2.new(1, 0, 0, 30), BackgroundColor3 = Color3.fromRGB(18,18,24), Active = true, Parent = FlingTargetMenu})
+Make("UICorner", {CornerRadius = UDim.new(0, 8), Parent = FTPTop})
+
+local FTPTitle = Make("TextLabel", {
+    Size = UDim2.new(1, -35, 1, 0), Position = UDim2.new(0, 8, 0, 0),
+    BackgroundTransparency = 1, Text = "Fling Target", TextColor3 = C_PR,
+    Font = GB, TextSize = 12, TextXAlignment = Enum.TextXAlignment.Left, Parent = FTPTop
+})
+RegisterElement("Texts", FTPTitle)
+
+local FTPCloseBtn = Make("TextButton", {
+    Size = UDim2.new(0, 26, 0, 26), Position = UDim2.new(1, -28, 0.5, -13),
+    BackgroundTransparency = 1, Text = "X", TextColor3 = Color3.fromRGB(255, 75, 75),
+    Font = GB, TextSize = 13, Parent = FTPTop
+})
+
+local FTPScroll = Make("ScrollingFrame", {
+    Size = UDim2.new(1, -10, 1, -36), Position = UDim2.new(0, 5, 0, 32),
+    BackgroundTransparency = 1, ScrollBarThickness = 0, Parent = FlingTargetMenu
+})
+local FTPList = Make("UIListLayout", {Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder, Parent = FTPScroll})
+
+FTPList:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+    FTPScroll.CanvasSize = UDim2.new(0, 0, 0, FTPList.AbsoluteContentSize.Y + 4)
+end)
+
+MakeDrag(FTPTop, FlingTargetMenu)
+
+local FlingTargetPlayer = nil
+local TpAuraActive = false
+local TpAuraTimer = 0
+
+local function UpdateFlingTargetList()
+    for _, child in ipairs(FTPScroll:GetChildren()) do
+        if child:IsA("TextButton") or child:IsA("Frame") then child:Destroy() end
+    end
+    
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LP then
+            local isTarget = (FlingTargetPlayer == p)
+            local card = Make("TextButton", {
+                Size = UDim2.new(1, 0, 0, 32),
+                BackgroundColor3 = isTarget and C_PR or C_EL,
+                Text = "", AutoButtonColor = true, Parent = FTPScroll
+            })
+            Make("UICorner", {CornerRadius = UDim.new(0, 6), Parent = card})
+            
+            local img = Make("ImageLabel", {
+                Size = UDim2.new(0, 22, 0, 22), Position = UDim2.new(0, 4, 0.5, -11),
+                BackgroundTransparency = 1, Parent = card
+            })
+            Make("UICorner", {CornerRadius = UDim.new(1, 0), Parent = img})
+            
+            task.spawn(function()
+                local content = Players:GetUserThumbnailAsync(p.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size100x100)
+                img.Image = content
+            end)
+            
+            Make("TextLabel", {
+                Size = UDim2.new(1, -32, 0, 12), Position = UDim2.new(0, 30, 0, 3),
+                BackgroundTransparency = 1, Text = p.DisplayName .. (isTarget and " [TARGET]" or ""),
+                TextColor3 = C_TX, Font = GB, TextSize = 10, TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd, Parent = card
+            })
+            Make("TextLabel", {
+                Size = UDim2.new(1, -32, 0, 10), Position = UDim2.new(0, 30, 0, 16),
+                BackgroundTransparency = 1, Text = "@" .. string.lower(p.Name), TextColor3 = isTarget and Color3.fromRGB(220,220,220) or C_GR,
+                Font = G, TextSize = 8, TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd, Parent = card
+            })
+            
+            card.MouseButton1Click:Connect(function()
+                if FlingTargetPlayer == p then
+                    FlingTargetPlayer = nil
+                    pcall(function() game.StarterGui:SetCore("SendNotification", {Title = "NaziDLC - Fling Target", Text = "Цель сброшена", Duration = 2}) end)
+                else
+                    FlingTargetPlayer = p
+                    pcall(function() game.StarterGui:SetCore("SendNotification", {Title = "NaziDLC - Fling Target", Text = "Цель: " .. p.DisplayName, Duration = 2}) end)
+                end
+                UpdateFlingTargetList()
+            end)
+        end
+    end
+end
+
+local function ToggleFlingTargetMenu(state)
+    if state then
+        UpdateFlingTargetList()
+        FlingTargetMenu.Visible = true
+        FlingTargetMenu.Size = UDim2.new(0, 0, 0, 0)
+        TS:Create(FlingTargetMenu, TweenInfo.new(0.3, EBack, EOut), {Size = UDim2.new(0, 170, 0, 190)}):Play()
+    else
+        local anim = TS:Create(FlingTargetMenu, TweenInfo.new(0.2, EBack, EIn), {Size = UDim2.new(0, 0, 0, 0)})
+        anim:Play()
+        anim.Completed:Wait()
+        FlingTargetMenu.Visible = false
+    end
+end
+
+FTPCloseBtn.MouseButton1Click:Connect(function()
+    ToggleFlingTargetMenu(false)
+end)
+
 local function UpdateTPList()
     for _, child in ipairs(TPScroll:GetChildren()) do
         if child:IsA("TextButton") or child:IsA("Frame") then child:Destroy() end
@@ -177,8 +290,18 @@ local function UpdateTPList()
     end
 end
 
-Players.PlayerAdded:Connect(UpdateTPList)
-Players.PlayerRemoving:Connect(UpdateTPList)
+Players.PlayerAdded:Connect(function()
+    UpdateTPList()
+    UpdateFlingTargetList()
+end)
+
+Players.PlayerRemoving:Connect(function(p)
+    if FlingTargetPlayer == p then 
+        FlingTargetPlayer = nil 
+    end
+    UpdateTPList()
+    UpdateFlingTargetList()
+end)
 
 local function ToggleTPMenu(state)
     if state then
@@ -230,6 +353,7 @@ for _, col in ipairs(ThemeColors) do
         Grad.Color = GetGradient(col)
         C_Grad.Color = GetGradient(col)
         TP_Grad.Color = GetGradient(col)
+        FT_Grad.Color = GetGradient(col)
         UpdateThemeColor(col)
     end)
 end
@@ -248,11 +372,13 @@ RS.RenderStepped:Connect(function(dt)
         Grad.Color = GetGradient(C_PR)
         C_Grad.Color = GetGradient(C_PR)
         TP_Grad.Color = GetGradient(C_PR)
+        FT_Grad.Color = GetGradient(C_PR)
         UpdateThemeColor(C_PR)
     end
     Grad.Rotation = (Grad.Rotation + 80 * dt) % 360
     C_Grad.Rotation = Grad.Rotation
     TP_Grad.Rotation = Grad.Rotation
+    FT_Grad.Rotation = Grad.Rotation
     if FOVFrame.Visible then FOVFrame.Position = UDim2.new(0, Cam.ViewportSize.X/2, 0, Cam.ViewportSize.Y/2) end
 end)
 
@@ -788,6 +914,19 @@ end)
 
 local FlingVars = {Active = false, Loop = nil, Gyro = nil, BAV = nil, BV = nil}
 
+local function GetRandomPlayer()
+    local plrs = {}
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LP and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChildOfClass("Humanoid") and p.Character:FindFirstChildOfClass("Humanoid").Health > 0 then
+            table.insert(plrs, p)
+        end
+    end
+    if #plrs > 0 then
+        return plrs[math.random(1, #plrs)]
+    end
+    return nil
+end
+
 local function StopRealFling()
     FlingVars.Active = false
     if FlingVars.Loop then FlingVars.Loop:Disconnect(); FlingVars.Loop = nil end
@@ -853,10 +992,29 @@ local function StartRealFling()
         end
     end
 
-    FlingVars.Loop = RS.Heartbeat:Connect(function()
+    FlingVars.Loop = RS.Heartbeat:Connect(function(dt)
         if not FlingVars.Active or not hum or not hrp then return end
         
-        FlingVars.BV.Velocity = hum.MoveDirection * hum.WalkSpeed
+        if TpAuraActive then
+            TpAuraTimer = TpAuraTimer + dt
+            if TpAuraTimer >= 5 or not FlingTargetPlayer or not FlingTargetPlayer.Parent or not FlingTargetPlayer.Character or not FlingTargetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                TpAuraTimer = 0
+                local newTarget = GetRandomPlayer()
+                if newTarget then
+                    FlingTargetPlayer = newTarget
+                    UpdateFlingTargetList()
+                end
+            end
+        end
+
+        if FlingTargetPlayer and FlingTargetPlayer.Character and FlingTargetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            local targetHrp = FlingTargetPlayer.Character.HumanoidRootPart
+            hrp.CFrame = targetHrp.CFrame * CFrame.new(math.random(-1, 1), 0, math.random(-1, 1))
+            FlingVars.BV.Velocity = targetHrp.Velocity
+        else
+            FlingVars.BV.Velocity = hum.MoveDirection * hum.WalkSpeed
+        end
+
         FlingVars.BAV.AngularVelocity = Vector3.new(0, 15000, 0)
         
         hrp.RotVelocity = Vector3.new(0, 15000, 0)
@@ -870,7 +1028,7 @@ local function StartRealFling()
     end)
 end
 
-Elements:Feature("Fling (Смертельное торнадо)", function(s)
+local FlingF = Elements:Feature("Fling (Смертельное торнадо)", function(s)
     CharMods.Fling = s
     if s then
         StartRealFling()
@@ -878,6 +1036,25 @@ Elements:Feature("Fling (Смертельное торнадо)", function(s)
     else
         StopRealFling()
         pcall(function() game.StarterGui:SetCore("SendNotification", {Title = "NaziDLC - Fling", Text = "Fling ВЫКЛЮЧЕН", Duration = 3}) end)
+    end
+end)
+
+FlingF:Button("Выбрать цель (🎯)", function()
+    ToggleFlingTargetMenu(true)
+end)
+
+FlingF:Toggle("TpAURA (Каждые 5 сек)", false, function(s)
+    TpAuraActive = s
+    TpAuraTimer = 0
+    if s then
+        local firstTarget = GetRandomPlayer()
+        if firstTarget then
+            FlingTargetPlayer = firstTarget
+            UpdateFlingTargetList()
+        end
+    else
+        FlingTargetPlayer = nil
+        UpdateFlingTargetList()
     end
 end)
 
