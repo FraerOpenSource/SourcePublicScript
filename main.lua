@@ -356,7 +356,7 @@ local SD = {On = false, SavedCF = nil, AutoJump = false}
 local Aim = {On = false, ShowFOV = false, FOV = 100, Smooth = 0.5, Wall = false, Dist = 500}
 local WB = {On = false, Trans = 0.5, Orig = {}}
 local ESP = {Master = false, Box = true, Name = true, Dist = true, HP = true, Tracers = false, Chams = false}
-local CharMods = {Fly = false, FlySpd = 50, SpdHack = false, WalkSpd = 16, JmpHack = false, JmpPwr = 50, InfJmp = false, Noclip = false}
+local CharMods = {Fly = false, FlySpd = 50, SpdHack = false, WalkSpd = 16, JmpHack = false, JmpPwr = 50, InfJmp = false, Noclip = false, Fling = false}
 
 local BABFT = {
     Farming = false,
@@ -786,6 +786,101 @@ Elements:Feature("Noclip (Сквозь стены)", function(s)
     end
 end)
 
+local FlingVars = {Active = false, Loop = nil, Gyro = nil, BAV = nil, BV = nil}
+
+local function StopRealFling()
+    FlingVars.Active = false
+    if FlingVars.Loop then FlingVars.Loop:Disconnect(); FlingVars.Loop = nil end
+    if FlingVars.Gyro then FlingVars.Gyro:Destroy(); FlingVars.Gyro = nil end
+    if FlingVars.BAV then FlingVars.BAV:Destroy(); FlingVars.BAV = nil end
+    if FlingVars.BV then FlingVars.BV:Destroy(); FlingVars.BV = nil end
+    
+    local char = LP.Character
+    if char then
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if hum then
+            hum.AutoRotate = true
+            hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, true)
+            hum:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, true)
+        end
+        for _, part in ipairs(char:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.Massless = false
+                part.CustomPhysicalProperties = PhysicalProperties.new(0.7, 0.3, 0.5, 1, 1)
+            end
+        end
+    end
+end
+
+local function StartRealFling()
+    StopRealFling()
+    FlingVars.Active = true
+    
+    local char = LP.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if not hrp or not hum then return end
+
+    hum.AutoRotate = false 
+    hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+    hum:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+
+    FlingVars.Gyro = Instance.new("BodyGyro")
+    FlingVars.Gyro.Name = "PostureCheck"
+    FlingVars.Gyro.MaxTorque = Vector3.new(math.huge, 0, math.huge)
+    FlingVars.Gyro.P = 100000
+    FlingVars.Gyro.CFrame = CFrame.new() 
+    FlingVars.Gyro.Parent = hrp
+
+    FlingVars.BAV = Instance.new("BodyAngularVelocity")
+    FlingVars.BAV.Name = "Spin"
+    FlingVars.BAV.MaxTorque = Vector3.new(0, math.huge, 0)
+    FlingVars.BAV.AngularVelocity = Vector3.new(0, 15000, 0)
+    FlingVars.BAV.Parent = hrp
+
+    FlingVars.BV = Instance.new("BodyVelocity")
+    FlingVars.BV.Name = "WalkForce"
+    FlingVars.BV.MaxForce = Vector3.new(math.huge, 0, math.huge)
+    FlingVars.BV.Velocity = Vector3.zero
+    FlingVars.BV.Parent = hrp
+
+    for _, part in ipairs(char:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.CustomPhysicalProperties = PhysicalProperties.new(0.7, 0, 0, 1, 1) 
+            if part.Name ~= "HumanoidRootPart" then
+                part.Massless = true
+            end
+        end
+    end
+
+    FlingVars.Loop = RS.Heartbeat:Connect(function()
+        if not FlingVars.Active or not hum or not hrp then return end
+        
+        FlingVars.BV.Velocity = hum.MoveDirection * hum.WalkSpeed
+        FlingVars.BAV.AngularVelocity = Vector3.new(0, 15000, 0)
+        
+        hrp.RotVelocity = Vector3.new(0, 15000, 0)
+        hrp.AssemblyAngularVelocity = Vector3.new(0, 15000, 0)
+        
+        for _, part in ipairs(char:GetDescendants()) do
+            if part:IsA("BasePart") and part.CanCollide then
+                part.CanCollide = false
+            end
+        end
+    end)
+end
+
+Elements:Feature("Fling (Смертельное торнадо)", function(s)
+    CharMods.Fling = s
+    if s then
+        StartRealFling()
+        pcall(function() game.StarterGui:SetCore("SendNotification", {Title = "NaziDLC - Fling", Text = "- ПИЗДА ВСЕМУ СЕРВЕРУ НАХУЙ РАЗНОСИ ПИДОРОВ", Duration = 5}) end)
+    else
+        StopRealFling()
+        pcall(function() game.StarterGui:SetCore("SendNotification", {Title = "NaziDLC - Fling", Text = "Fling ВЫКЛЮЧЕН", Duration = 3}) end)
+    end
+end)
+
 local SpdF = Elements:Feature("SpeedHack", function(s) CharMods.SpdHack = s; if not s and LP.Character and LP.Character:FindFirstChildOfClass("Humanoid") then LP.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = 16 end end)
 SpdF:Slider("Скорость бега", 16, 2000, 16, function(v) CharMods.WalkSpeed = v end)
 
@@ -795,4 +890,8 @@ JmpF:Slider("Сила прыжка", 50, 1000, 50, function(v) CharMods.JmpPwr =
 Elements:Feature("Infinite Jump", function(s) CharMods.InfJmp = s end)
 UIS.JumpRequest:Connect(function() if CharMods.InfJmp and LP.Character and LP.Character:FindFirstChildOfClass("Humanoid") then LP.Character:FindFirstChildOfClass("Humanoid"):ChangeState(Enum.HumanoidStateType.Jumping) end end)
 
-LP.CharacterAdded:Connect(function() task.wait(0.7); if CharMods.Fly then CharMods.Fly = false; task.wait(0.1); CharMods.Fly = true end end)
+LP.CharacterAdded:Connect(function() 
+    task.wait(0.7)
+    if CharMods.Fly then CharMods.Fly = false; task.wait(0.1); CharMods.Fly = true end
+    if CharMods.Fling then CharMods.Fling = false; StopRealFling() end 
+end)
